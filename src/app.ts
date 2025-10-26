@@ -12,6 +12,7 @@ export class App {
 
   private async init(): Promise<void> {
     this.checkAdminMode();
+    this.checkAdminSession();
     await this.testDatabaseConnection();
     await this.loadData();
     this.setupEventListeners();
@@ -20,6 +21,13 @@ export class App {
   private checkAdminMode(): void {
     const urlParams = new URLSearchParams(window.location.search);
     this.isAdminMode = urlParams.get('admin') === 'true';
+  }
+
+  private checkAdminSession(): void {
+    const savedUser = localStorage.getItem('adminUser');
+    if (savedUser === 'ahsanursabbir@gmail.com') {
+      this.currentUser = savedUser;
+    }
   }
 
   private async testDatabaseConnection(): Promise<void> {
@@ -402,13 +410,18 @@ export class App {
             <h2>Admin Login</h2>
             <div class="form-group">
               <label class="form-label" for="email">Email</label>
-              <input type="email" id="email" class="form-input" required>
+              <input type="email" id="email" class="form-input" required value="ahsanursabbir@gmail.com">
             </div>
             <div class="form-group">
               <label class="form-label" for="password">Password</label>
               <input type="password" id="password" class="form-input" required>
             </div>
             <button type="submit" class="btn btn-primary" style="width: 100%;">Login</button>
+            <div style="margin-top: 1rem; padding: 1rem; background: #f3f4f6; border-radius: 0.5rem; font-size: 0.875rem;">
+              <strong>Test Credentials:</strong><br>
+              Email: ahsanursabbir@gmail.com<br>
+              Password: Ahs@nursabbir0
+            </div>
           </form>
         </div>
       </div>
@@ -554,15 +567,33 @@ export class App {
   public async handleLogin(event: Event): Promise<void> {
     event.preventDefault();
     const form = event.target as HTMLFormElement;
-    const email = (form.querySelector('#email') as HTMLInputElement).value;
-    const password = (form.querySelector('#password') as HTMLInputElement).value;
+    const emailInput = form.querySelector('#email') as HTMLInputElement;
+    const passwordInput = form.querySelector('#password') as HTMLInputElement;
+    
+    if (!emailInput || !passwordInput) {
+      this.showError('Form elements not found');
+      return;
+    }
 
+    const email = emailInput.value.trim();
+    const password = passwordInput.value;
+
+    console.log('Login attempt:', { email, passwordLength: password.length });
+
+    // Check credentials
     if (email === 'ahsanursabbir@gmail.com' && password === 'Ahs@nursabbir0') {
       this.currentUser = email;
       localStorage.setItem('adminUser', email);
+      this.showSuccess('Login successful!');
       await this.renderAdminPanel();
     } else {
-      this.showError('Invalid credentials');
+      console.log('Invalid credentials:', { 
+        emailMatch: email === 'ahsanursabbir@gmail.com',
+        passwordMatch: password === 'Ahs@nursabbir0',
+        expectedEmail: 'ahsanursabbir@gmail.com',
+        expectedPassword: 'Ahs@nursabbir0'
+      });
+      this.showError('Invalid credentials. Please check your email and password.');
     }
   }
 
