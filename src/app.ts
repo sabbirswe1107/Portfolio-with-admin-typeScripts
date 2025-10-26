@@ -60,12 +60,12 @@ export class App {
 
     try {
       const [education, skills, experience, projects, certificates, contactInfo] = await Promise.all([
-        SupabaseService.getEducation(),
-        SupabaseService.getSkills(),
-        SupabaseService.getExperience(),
-        SupabaseService.getProjects(),
-        SupabaseService.getCertificates(),
-        SupabaseService.getContactInfo()
+        SupabaseService.getEducation().catch(() => []),
+        SupabaseService.getSkills().catch(() => []),
+        SupabaseService.getExperience().catch(() => []),
+        SupabaseService.getProjects().catch(() => []),
+        SupabaseService.getCertificates().catch(() => []),
+        SupabaseService.getContactInfo().catch(() => null)
       ]);
 
       app.innerHTML = `
@@ -81,7 +81,18 @@ export class App {
       `;
     } catch (error) {
       console.error('Error rendering portfolio:', error);
-      app.innerHTML = this.renderError('Failed to load portfolio data');
+      // Show a fallback portfolio even if database fails
+      app.innerHTML = `
+        ${this.renderHeader()}
+        ${this.renderHero()}
+        ${this.renderEducation([])}
+        ${this.renderSkills([])}
+        ${this.renderExperience([])}
+        ${this.renderProjects([])}
+        ${this.renderCertificates([])}
+        ${this.renderContact(null)}
+        ${this.renderFooter()}
+      `;
     }
   }
 
@@ -89,7 +100,7 @@ export class App {
     return `
       <header class="header">
         <nav class="nav container">
-          <a href="#" class="logo">Ahsanur Rahman Sabbir</a>
+          <a href="#" class="logo">Ahsanur Rahman</a>
           <ul class="nav-links">
             <li><a href="#home">Home</a></li>
             <li><a href="#education">Education</a></li>
@@ -110,8 +121,8 @@ export class App {
       <section id="home" class="hero">
         <div class="container">
           <div class="hero-content">
-            <img src="https://via.placeholder.com/200x200/2563eb/ffffff?text=ARS" alt="Ahsanur Rahman Sabbir" class="hero-image">
-            <h1>Ahsanur Rahman Sabbir</h1>
+            <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop&crop=face&auto=format&q=80" alt="Ahsanur Rahman" class="hero-image">
+            <h1>Ahsanur Rahman</h1>
             <p>Passionate Data Scientist and Backend Developer with expertise in machine learning, data analysis, and building scalable web applications. I love turning complex problems into simple, beautiful solutions.</p>
             <div class="social-links">
               <a href="https://github.com/SABBiR1107" class="social-link" target="_blank">
