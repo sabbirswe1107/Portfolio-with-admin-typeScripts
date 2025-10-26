@@ -1,5 +1,6 @@
 import { SupabaseService } from './services/supabaseService';
 import { Education, Skill, Experience, Project, Certificate, ContactInfo } from './types/database';
+import { testDatabaseConnection } from './utils/databaseTest';
 
 export class App {
   private currentUser: string | null = null;
@@ -11,6 +12,7 @@ export class App {
 
   private async init(): Promise<void> {
     this.checkAdminMode();
+    await this.testDatabaseConnection();
     await this.loadData();
     this.setupEventListeners();
   }
@@ -18,6 +20,17 @@ export class App {
   private checkAdminMode(): void {
     const urlParams = new URLSearchParams(window.location.search);
     this.isAdminMode = urlParams.get('admin') === 'true';
+  }
+
+  private async testDatabaseConnection(): Promise<void> {
+    try {
+      const isConnected = await testDatabaseConnection();
+      if (!isConnected) {
+        console.warn('Database connection test failed, but continuing...');
+      }
+    } catch (error) {
+      console.warn('Database connection test error:', error);
+    }
   }
 
   private async loadData(): Promise<void> {
@@ -560,18 +573,42 @@ export class App {
   }
 
   public showAddForm(type: string): void {
-    // Implementation for showing add forms
-    console.log('Show add form for:', type);
+    const modal = this.createModal(type, 'add');
+    document.body.appendChild(modal);
   }
 
   public editItem(type: string, id: string): void {
-    // Implementation for editing items
-    console.log('Edit item:', type, id);
+    const modal = this.createModal(type, 'edit', id);
+    document.body.appendChild(modal);
   }
 
-  public deleteItem(type: string, id: string): void {
-    // Implementation for deleting items
-    console.log('Delete item:', type, id);
+  public async deleteItem(type: string, id: string): Promise<void> {
+    if (!confirm('Are you sure you want to delete this item?')) return;
+
+    try {
+      switch (type) {
+        case 'education':
+          await SupabaseService.deleteEducation(id);
+          break;
+        case 'skills':
+          await SupabaseService.deleteSkill(id);
+          break;
+        case 'experience':
+          await SupabaseService.deleteExperience(id);
+          break;
+        case 'projects':
+          await SupabaseService.deleteProject(id);
+          break;
+        case 'certificates':
+          await SupabaseService.deleteCertificate(id);
+          break;
+      }
+      this.showSuccess('Item deleted successfully');
+      await this.renderAdminPanel();
+    } catch (error) {
+      console.error('Error deleting item:', error);
+      this.showError('Failed to delete item');
+    }
   }
 
   public async updateContact(event: Event): Promise<void> {
@@ -591,6 +628,307 @@ export class App {
     } catch (error) {
       console.error('Error updating contact info:', error);
       this.showError('Failed to update contact information');
+    }
+  }
+
+  private createModal(type: string, action: 'add' | 'edit', id?: string): HTMLElement {
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 10000;
+    `;
+
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = `
+      background: white;
+      padding: 2rem;
+      border-radius: 0.75rem;
+      max-width: 500px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+    `;
+
+    modalContent.innerHTML = this.getFormHTML(type, action, id);
+    modal.appendChild(modalContent);
+
+    // Close modal when clicking outside
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.remove();
+      }
+    });
+
+    return modal;
+  }
+
+  private getFormHTML(type: string, action: 'add' | 'edit', id?: string): string {
+    const title = action === 'add' ? `Add ${type.charAt(0).toUpperCase() + type.slice(1)}` : `Edit ${type.charAt(0).toUpperCase() + type.slice(1)}`;
+    
+    switch (type) {
+      case 'education':
+        return `
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h3>${title}</h3>
+            <button onclick="this.closest('.modal-overlay').remove()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
+          </div>
+          <form onsubmit="app.handleFormSubmit(event, 'education', '${action}', '${id || ''}')">
+            <div class="form-group">
+              <label class="form-label">Degree</label>
+              <input type="text" name="degree" class="form-input" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Institution</label>
+              <input type="text" name="institution" class="form-input" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Start Year</label>
+              <input type="number" name="start_year" class="form-input" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">End Year</label>
+              <input type="number" name="end_year" class="form-input" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Description</label>
+              <textarea name="description" class="form-input" rows="3"></textarea>
+            </div>
+            <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+              <button type="button" onclick="this.closest('.modal-overlay').remove()" class="btn btn-secondary">Cancel</button>
+              <button type="submit" class="btn btn-primary">${action === 'add' ? 'Add' : 'Update'}</button>
+            </div>
+          </form>
+        `;
+
+      case 'skills':
+        return `
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h3>${title}</h3>
+            <button onclick="this.closest('.modal-overlay').remove()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
+          </div>
+          <form onsubmit="app.handleFormSubmit(event, 'skills', '${action}', '${id || ''}')">
+            <div class="form-group">
+              <label class="form-label">Skill Title</label>
+              <input type="text" name="title" class="form-input" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Category</label>
+              <select name="category" class="form-input" required>
+                <option value="hard">Hard Skill</option>
+                <option value="soft">Soft Skill</option>
+              </select>
+            </div>
+            <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+              <button type="button" onclick="this.closest('.modal-overlay').remove()" class="btn btn-secondary">Cancel</button>
+              <button type="submit" class="btn btn-primary">${action === 'add' ? 'Add' : 'Update'}</button>
+            </div>
+          </form>
+        `;
+
+      case 'experience':
+        return `
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h3>${title}</h3>
+            <button onclick="this.closest('.modal-overlay').remove()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
+          </div>
+          <form onsubmit="app.handleFormSubmit(event, 'experience', '${action}', '${id || ''}')">
+            <div class="form-group">
+              <label class="form-label">Job Title</label>
+              <input type="text" name="job_title" class="form-input" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Company</label>
+              <input type="text" name="company" class="form-input" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Start Date</label>
+              <input type="text" name="start_date" class="form-input" placeholder="e.g., 2023-06" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">End Date</label>
+              <input type="text" name="end_date" class="form-input" placeholder="e.g., 2023-12" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Responsibilities (one per line)</label>
+              <textarea name="responsibilities" class="form-input" rows="4" placeholder="Enter each responsibility on a new line"></textarea>
+            </div>
+            <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+              <button type="button" onclick="this.closest('.modal-overlay').remove()" class="btn btn-secondary">Cancel</button>
+              <button type="submit" class="btn btn-primary">${action === 'add' ? 'Add' : 'Update'}</button>
+            </div>
+          </form>
+        `;
+
+      case 'projects':
+        return `
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h3>${title}</h3>
+            <button onclick="this.closest('.modal-overlay').remove()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
+          </div>
+          <form onsubmit="app.handleFormSubmit(event, 'projects', '${action}', '${id || ''}')">
+            <div class="form-group">
+              <label class="form-label">Project Name</label>
+              <input type="text" name="name" class="form-input" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Description</label>
+              <textarea name="description" class="form-input" rows="3" required></textarea>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Technologies (comma-separated)</label>
+              <input type="text" name="technologies" class="form-input" placeholder="e.g., TypeScript, React, Node.js" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Project Link</label>
+              <input type="url" name="link" class="form-input" required>
+            </div>
+            <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+              <button type="button" onclick="this.closest('.modal-overlay').remove()" class="btn btn-secondary">Cancel</button>
+              <button type="submit" class="btn btn-primary">${action === 'add' ? 'Add' : 'Update'}</button>
+            </div>
+          </form>
+        `;
+
+      case 'certificates':
+        return `
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h3>${title}</h3>
+            <button onclick="this.closest('.modal-overlay').remove()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
+          </div>
+          <form onsubmit="app.handleFormSubmit(event, 'certificates', '${action}', '${id || ''}')">
+            <div class="form-group">
+              <label class="form-label">Certificate Name</label>
+              <input type="text" name="name" class="form-input" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Certificate URL</label>
+              <input type="url" name="url" class="form-input" required>
+            </div>
+            <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+              <button type="button" onclick="this.closest('.modal-overlay').remove()" class="btn btn-secondary">Cancel</button>
+              <button type="submit" class="btn btn-primary">${action === 'add' ? 'Add' : 'Update'}</button>
+            </div>
+          </form>
+        `;
+
+      default:
+        return '<p>Unknown form type</p>';
+    }
+  }
+
+  public async handleFormSubmit(event: Event, type: string, action: 'add' | 'edit', id?: string): Promise<void> {
+    event.preventDefault();
+    const form = event.target as HTMLFormElement;
+    const formData = new FormData(form);
+    
+    try {
+      if (action === 'add') {
+        await this.addItem(type, formData);
+      } else {
+        await this.updateItem(type, id!, formData);
+      }
+      
+      this.showSuccess(`${type.charAt(0).toUpperCase() + type.slice(1)} ${action === 'add' ? 'added' : 'updated'} successfully`);
+      document.querySelector('.modal-overlay')?.remove();
+      await this.renderAdminPanel();
+    } catch (error) {
+      console.error(`Error ${action}ing ${type}:`, error);
+      this.showError(`Failed to ${action} ${type}`);
+    }
+  }
+
+  private async addItem(type: string, formData: FormData): Promise<void> {
+    switch (type) {
+      case 'education':
+        await SupabaseService.addEducation({
+          degree: formData.get('degree') as string,
+          institution: formData.get('institution') as string,
+          start_year: parseInt(formData.get('start_year') as string),
+          end_year: parseInt(formData.get('end_year') as string),
+          description: formData.get('description') as string || ''
+        });
+        break;
+      case 'skills':
+        await SupabaseService.addSkill({
+          title: formData.get('title') as string,
+          category: formData.get('category') as 'hard' | 'soft'
+        });
+        break;
+      case 'experience':
+        await SupabaseService.addExperience({
+          job_title: formData.get('job_title') as string,
+          company: formData.get('company') as string,
+          start_date: formData.get('start_date') as string,
+          end_date: formData.get('end_date') as string,
+          responsibilities: (formData.get('responsibilities') as string).split('\n').filter(r => r.trim())
+        });
+        break;
+      case 'projects':
+        await SupabaseService.addProject({
+          name: formData.get('name') as string,
+          description: formData.get('description') as string,
+          technologies: (formData.get('technologies') as string).split(',').map(t => t.trim()),
+          link: formData.get('link') as string
+        });
+        break;
+      case 'certificates':
+        await SupabaseService.addCertificate({
+          name: formData.get('name') as string,
+          url: formData.get('url') as string
+        });
+        break;
+    }
+  }
+
+  private async updateItem(type: string, id: string, formData: FormData): Promise<void> {
+    switch (type) {
+      case 'education':
+        await SupabaseService.updateEducation(id, {
+          degree: formData.get('degree') as string,
+          institution: formData.get('institution') as string,
+          start_year: parseInt(formData.get('start_year') as string),
+          end_year: parseInt(formData.get('end_year') as string),
+          description: formData.get('description') as string || ''
+        });
+        break;
+      case 'skills':
+        await SupabaseService.updateSkill(id, {
+          title: formData.get('title') as string,
+          category: formData.get('category') as 'hard' | 'soft'
+        });
+        break;
+      case 'experience':
+        await SupabaseService.updateExperience(id, {
+          job_title: formData.get('job_title') as string,
+          company: formData.get('company') as string,
+          start_date: formData.get('start_date') as string,
+          end_date: formData.get('end_date') as string,
+          responsibilities: (formData.get('responsibilities') as string).split('\n').filter(r => r.trim())
+        });
+        break;
+      case 'projects':
+        await SupabaseService.updateProject(id, {
+          name: formData.get('name') as string,
+          description: formData.get('description') as string,
+          technologies: (formData.get('technologies') as string).split(',').map(t => t.trim()),
+          link: formData.get('link') as string
+        });
+        break;
+      case 'certificates':
+        await SupabaseService.updateCertificate(id, {
+          name: formData.get('name') as string,
+          url: formData.get('url') as string
+        });
+        break;
     }
   }
 
