@@ -1,0 +1,23 @@
+{
+  "name": "personal-portfolio",
+  "version": "1.0.0",
+  "description": "Personal portfolio website with TypeScript and Supabase",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.38.0",
+    "typescript": "^5.2.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.8.0",
+    "vite": "^4.4.9"
+  },
+  "keywords": ["portfolio", "typescript", "supabase"],
+  "author": "Ahsanur Rahman Sabbir",
+  "license": "MIT"
+}
